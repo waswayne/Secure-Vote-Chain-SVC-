@@ -1,0 +1,29 @@
+{
+  "canisters": {
+    "SwainVoteChain_backend": {
+      "main": "src/SwainVoteChain_backend/main.mo",
+      "type": "motoko"
+    },
+    "SwainVoteChain_frontend": {
+      "dependencies": [
+        "SwainVoteChain_backend"
+      ],
+      "frontend": {
+        "entrypoint": "src/SwainVoteChain_frontend/src/index.html"
+      },
+      "source": [
+        "src/SwainVoteChain_frontend/assets",
+        "dist/SwainVoteChain_frontend/"
+      ],
+      "type": "assets"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
