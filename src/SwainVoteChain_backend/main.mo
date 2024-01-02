@@ -37,8 +37,9 @@ actor SecureVoteChain {
   let votes = List.nil<Vote>();
 
   type Result<A, B> = Result.Result<A, B>;
-  // type List<A> = ?(Principal, List<A>);
-  type List = ?(Principal, List);
+  type List<A> = ?(Principal, List<A>);
+
+  // type List = ?(Principal, List);
 
   // Register candidate//
   public func registerCandidate(candidate : Candidate) : async Result<(), Text> {
@@ -119,7 +120,7 @@ actor SecureVoteChain {
                 if (c.id == vote.candidate) {
 
                   var cast = c.voteCount + 1;
-                  cast := c.voteCount + 1;
+                  
 
                 };
                 c;
@@ -129,7 +130,7 @@ actor SecureVoteChain {
             // Add the vote to the list
 
             var vops = List.push(vote, votes);
-            vops := votes;
+
             return #ok(());
           };
           case (null) {
@@ -144,4 +145,31 @@ actor SecureVoteChain {
   public query func getVoteCounts() : async [Candidate] {
     return List.toArray(candidates);
   };
+
+  // Announce the winner(s)
+  public query func announceWinners() : async [Candidate] {
+    // Find the candidate(s) with the highest vote count
+    let maxVoteCount = List.foldLeft(
+      candidates,
+      0,
+      func(max : Nat, c : Candidate) : Nat {
+        if (c.voteCount > max) {
+          c.voteCount;
+        } else {
+          max;
+        };
+      },
+    );
+
+    // Filter candidates with the highest vote count
+    let winners = List.filter(
+      candidates,
+      func(c : Candidate) : Bool {
+        return c.voteCount == maxVoteCount;
+      },
+    );
+
+    return List.toArray(winners);
+  };
+
 };
