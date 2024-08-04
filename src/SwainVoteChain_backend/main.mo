@@ -8,9 +8,22 @@ import Iter "mo:base/Iter";
 import Bool "mo:base/Bool";
 import Error "mo:base/Error";
 import Hash "mo:base/Hash";
-
+import Time "mo:base/Time";
 
 actor SecureVoteChain {
+
+  type Ballot = {
+    id : Text; // Unique identifier for the ballot
+    title : Text;
+    description : Text;
+    startDate : Nat; // Unix timestamp
+    endDate : Nat; // Unix timestamp
+    eligibleVoters : List<Principal>; // Eligible voters' IDs
+    candidates : List<Candidate>; // List of candidates
+    isActive : Bool; // Indicates if the ballot is active
+  };
+
+  var ballots = List.nil<Ballot>();
 
   type Voter = {
     id : Principal;
@@ -39,7 +52,123 @@ actor SecureVoteChain {
   type Result<A, B> = Result.Result<A, B>;
   type List<A> = ?(Principal, List<A>);
 
-  // type List = ?(Principal, List);
+  // Create a new ballot
+  public func createBallot(ballot : Ballot) : async Result<(), Text> {
+    // Check if the ballot ID is unique
+    switch (List.find(ballots, func(b : Ballot) : Bool { return b.id == ballot.id })) {
+      case (?existingBallot) {
+        return #err("Ballot ID already exists");
+      };
+      case (null) {
+        // Add the new ballot
+        ballots := List.push(ballot, ballots);
+        return #ok(());
+      };
+    };
+  };
+
+  // Manage Ballot Status
+  public func manageBallotStatus(ballotId : Text, action : Text) : async Result<(), Text> {
+    // Find the specified ballot
+    switch (List.find(ballots, func(b : Ballot) : Bool { return b.id == ballotId })) {
+      case (?existingBallot) {
+        // Check if the action is to start or end the ballot
+        switch (action) {
+          case ("start") {
+            // Start the ballot
+            if (existingBallot.isActive) {
+              return #err("Ballot is already active");
+            } else {
+              // Check if the current time is after the start date
+              let currentTime = Time.now();
+              if (currentTime < existingBallot.startDate) {
+                return #err("Ballot cannot be started before the start date");
+              } else {
+                // Update the ballot's isActive flag to indicate that it's active
+                let updatedBallot = { existingBallot with isActive = true };
+                let updatedBallots = List.map(
+                  ballots,
+                  func(b : Ballot) : Ballot {
+                    if (b.id == ballotId) {
+                      return updatedBallot;
+                    } else {
+                      return b;
+                    };
+                  },
+                );
+                ballots := updatedBallots;
+                return #ok(());
+              };
+            };
+          };
+          case ("end") {
+            // End the ballot
+            if (not existingBallot.isActive) {
+              return #err("Ballot is already inactive");
+            } else {
+              // Check if the current time is after the end date
+              let currentTime = Time.now();
+              if (currentTime < existingBallot.endDate) {
+                return #err("Ballot cannot be ended before the end date");
+              } else {
+                // Update the ballot's isActive flag to indicate that it's inactive
+                let updatedBallot = { existingBallot with isActive = false };
+                let updatedBallots = List.map(
+                  ballots,
+                  func(b : Ballot) : Ballot {
+                    if (b.id == ballotId) {
+                      return updatedBallot;
+                    } else {
+                      return b;
+                    };
+                  },
+                );
+                ballots := updatedBallots;
+                return #ok(());
+              };
+            };
+          };
+          case _ {
+            return #err("Invalid action");
+          };
+        };
+      };
+      case (null) {
+        return #err("Ballot not found");
+      };
+    };
+  };
+
+  // Update an existing ballot
+  public func updateBallot(ballotId : Text, updatedBallot : Ballot) : async Result<(), Text> {
+    switch (List.find(ballots, func(b : Ballot) : Bool { return b.id == ballotId })) {
+      case (?existingBallot) {
+        // Update the existing ballot properties
+        let updatedBallots = List.map(
+          ballots,
+          func(b : Ballot) : Ballot {
+            if (b.id == ballotId) {
+              // Modify the properties you want to update
+              return {
+                existingBallot with
+                title = updatedBallot.title;
+                description = updatedBallot.description;
+                startDate = updatedBallot.startDate;
+                endDate = updatedBallot.endDate;
+              };
+            } else {
+              return b;
+            };
+          },
+        );
+        ballots := updatedBallots;
+        return #ok(());
+      };
+      case (null) {
+        return #err("Ballot not found");
+      };
+    };
+  };
 
   // Register candidate//
   public func registerCandidate(candidate : Candidate) : async Result<(), Text> {
@@ -118,10 +247,7 @@ actor SecureVoteChain {
               candidates,
               func(c : Candidate) : Candidate {
                 if (c.id == vote.candidate) {
-
-                  var cast = c.voteCount + 1;
-                  
-
+                  return { c with voteCount = c.voteCount + 1 };
                 };
                 c;
               },
